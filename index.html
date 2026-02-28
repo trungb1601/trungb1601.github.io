@@ -64,6 +64,8 @@
 
 <script>
   const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const providerSelect = document.getElementById("provider");
 
   function addMessage(text, sender) {
     const div = document.createElement("div");
@@ -71,22 +73,62 @@
     div.textContent = text;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
+    return div; // Return the element so we can update it if needed
   }
 
-  function send() {
-    const input = document.getElementById("input");
-    const provider = document.getElementById("provider").value;
+  async function send() {
+    const provider = providerSelect.value;
     const text = input.value.trim();
+    
     if (!text) return;
 
+    // 1. Show user message
     addMessage(text, "user");
     input.value = "";
 
-    // Placeholder response (API will come later)
-    setTimeout(() => {
-      addMessage(`(${provider}) response will appear here.`, "bot");
-    }, 500);
+    // 2. Show a temporary "Thinking..." message
+    const botMsgDiv = addMessage(`${provider} is thinking...`, "bot");
+
+    try {
+      // 3. Call your Cloudflare Worker
+      const response = await fetch("https://xai-grok-chathub.trungb1601.workers.dev/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: provider,
+          message: text
+        })
+      });
+
+      const data = await response.json();
+
+      // 4. Handle errors from the Worker
+      if (data.error) {
+        botMsgDiv.textContent = "Error: " + data.error;
+        return;
+      }
+
+      // 5. Extract the text based on which AI responded
+      let aiResponse = "";
+      if (provider === "gemini") {
+        aiResponse = data.candidates[0].content.parts[0].text;
+      } else {
+        // Works for both Grok and ChatGPT (OpenAI format)
+        aiResponse = data.choices[0].message.content;
+      }
+
+      botMsgDiv.textContent = aiResponse;
+
+    } catch (err) {
+      botMsgDiv.textContent = "Connection failed. Check console.";
+      console.error(err);
+    }
   }
+
+  // Allow pressing "Enter" to send
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") send();
+  });
 </script>
 
 </body>
