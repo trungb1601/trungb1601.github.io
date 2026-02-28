@@ -119,9 +119,12 @@
 
       botMsgDiv.textContent = aiResponse;
 
-    } catch (err) {
-      botMsgDiv.textContent = "Connection failed. Check console.";
-      console.error(err);
+    } // Change this line inside the try/catch in your script:
+if (data.error) {
+  botMsgDiv.textContent = "Error: " + JSON.stringify(data.error); // This stringifies the object
+  return;
+}
+        ;
     }
   }
 
