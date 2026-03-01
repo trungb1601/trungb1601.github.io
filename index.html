@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat Hub</title>
+  <title>Gemini Hub</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -32,7 +32,7 @@
     header {
       width: 100%;
       padding: 16px 24px;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--blue-accent);
       border-bottom: 1px solid #333;
@@ -42,7 +42,7 @@
     #chat-container {
       flex: 1;
       width: 100%;
-      max-width: 1600px; /* Increased to allow room for the 500px offsets */
+      max-width: 1800px; 
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -58,12 +58,11 @@
     }
 
     .msg {
-      max-width: 75%; 
-      padding: 10px 18px; /* Synchronized padding */
+      max-width: 70%; 
+      padding: 10px 18px; 
       line-height: 1.5;
       font-size: 15px;
       border-radius: 18px;
-      white-space: pre-wrap;
       position: relative;
       box-sizing: border-box;
     }
@@ -72,39 +71,33 @@
       background: var(--user-bubble);
       align-self: flex-end;
       border-bottom-right-radius: 4px;
-      margin-right: min(500px, 15%); /* Moves user bubble inward */
+      margin-right: min(500px, 15%);
     }
 
     .bot {
       background: var(--bot-bubble);
       align-self: flex-start;
       border-bottom-left-radius: 4px;
-      margin-left: min(500px, 15%); /* Moves AI bubble inward */
+      margin-left: min(500px, 15%);
     }
 
-    /* CRITICAL FIX: Remove margin from Markdown tags to lose bottom padding */
-    .bot p { 
-      margin: 0 !important; 
-    }
-    
-    .bot p + p { 
-      margin-top: 10px !important; 
-    }
+    /* THE PADDING FIX: Stripping all browser margins from AI generated text */
+    .bot * { margin: 0 !important; }
+    .bot p + p, .bot ul, .bot ol, .bot pre { margin-top: 10px !important; }
+    .bot li { margin-left: 20px !important; }
 
-    /* Ensure code blocks don't add unwanted vertical gaps */
     .bot pre {
-      background: #00000050;
-      border: 1px solid #ffffff30;
+      background: #00000040;
+      border: 1px solid #ffffff20;
       border-radius: 10px;
       padding: 12px;
-      margin: 10px 0;
     }
     
     .copy-btn {
       position: absolute;
       top: 6px;
       right: 6px;
-      background: #ffffff20;
+      background: #ffffff15;
       color: #fff;
       border: none;
       padding: 3px 8px;
@@ -115,7 +108,7 @@
 
     footer {
       width: 100%;
-      padding: 20px;
+      padding: 24px;
       display: flex;
       justify-content: center;
       background: var(--bg-main);
@@ -124,12 +117,12 @@
 
     .input-container {
       width: 100%;
-      max-width: 700px; 
+      max-width: 750px; 
       background: var(--bg-sidebar);
       border-radius: 30px;
       display: flex;
       align-items: center;
-      padding: 4px 16px;
+      padding: 4px 18px;
       border: 1px solid #444;
     }
 
@@ -140,6 +133,7 @@
       font-weight: bold;
       outline: none;
       cursor: pointer;
+      font-size: 14px;
     }
 
     input {
@@ -163,7 +157,7 @@
 </head>
 <body>
 
-<header>AI Chat Hub</header>
+<header>Gemini Hub</header>
 
 <div id="chat-container">
   <div id="chat"></div>
@@ -183,7 +177,8 @@
 
 <script>
   marked.setOptions({
-    highlight: function(code) { return hljs.highlightAuto(code).value; }
+    highlight: function(code) { return hljs.highlightAuto(code).value; },
+    breaks: true // Respects single line breaks
   });
 
   const chat = document.getElementById("chat");
@@ -198,7 +193,6 @@
     if (sender === "user") {
       div.textContent = content;
     } else {
-      // Logic for the bot to handle markdown correctly
       div.innerHTML = marked.parse(content);
       setupCodeBlocks(div);
     }
@@ -214,7 +208,8 @@
       btn.className = 'copy-btn';
       btn.innerText = 'Copy';
       btn.onclick = () => {
-        navigator.clipboard.writeText(block.querySelector('code')?.innerText || block.innerText.replace('Copy', ''));
+        const code = block.querySelector('code')?.innerText || block.innerText;
+        navigator.clipboard.writeText(code.replace('Copy', ''));
         btn.innerText = 'Copied!';
         setTimeout(() => btn.innerText = 'Copy', 2000);
       };
@@ -244,7 +239,6 @@
         ? data.candidates[0].content.parts[0].text 
         : data.choices[0].message.content;
 
-      // Update innerHTML with parsed content
       botMsgDiv.innerHTML = marked.parse(aiResponse);
       setupCodeBlocks(botMsgDiv);
 
