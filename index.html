@@ -42,8 +42,7 @@
     #chat-container {
       flex: 1;
       width: 100%;
-      /* Adjusting container to allow bubbles to move inward from edges */
-      max-width: 1200px; 
+      max-width: 1600px; /* Increased to allow room for the 500px offsets */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -55,46 +54,50 @@
       padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
     }
 
     .msg {
       max-width: 75%; 
-      /* Tightened padding to match user bubble height */
-      padding: 10px 18px; 
+      padding: 10px 18px; /* Synchronized padding */
       line-height: 1.5;
       font-size: 15px;
       border-radius: 18px;
       white-space: pre-wrap;
       position: relative;
+      box-sizing: border-box;
     }
 
     .user {
       background: var(--user-bubble);
       align-self: flex-end;
       border-bottom-right-radius: 4px;
-      /* Move user bubble 500px away from the right edge on large screens */
-      margin-right: min(500px, 10%);
+      margin-right: min(500px, 15%); /* Moves user bubble inward */
     }
 
     .bot {
       background: var(--bot-bubble);
       align-self: flex-start;
       border-bottom-left-radius: 4px;
-      /* Move AI bubble 500px away from the left edge on large screens */
-      margin-left: min(500px, 10%);
+      margin-left: min(500px, 15%); /* Moves AI bubble inward */
     }
 
-    /* Remove extra spacing from Markdown blocks inside AI bubbles */
-    .bot p { margin: 0; }
-    .bot p + p { margin-top: 10px; }
+    /* CRITICAL FIX: Remove margin from Markdown tags to lose bottom padding */
+    .bot p { 
+      margin: 0 !important; 
+    }
     
+    .bot p + p { 
+      margin-top: 10px !important; 
+    }
+
+    /* Ensure code blocks don't add unwanted vertical gaps */
     .bot pre {
       background: #00000050;
       border: 1px solid #ffffff30;
       border-radius: 10px;
       padding: 12px;
-      margin: 8px 0;
+      margin: 10px 0;
     }
     
     .copy-btn {
@@ -195,6 +198,7 @@
     if (sender === "user") {
       div.textContent = content;
     } else {
+      // Logic for the bot to handle markdown correctly
       div.innerHTML = marked.parse(content);
       setupCodeBlocks(div);
     }
@@ -240,6 +244,7 @@
         ? data.candidates[0].content.parts[0].text 
         : data.choices[0].message.content;
 
+      // Update innerHTML with parsed content
       botMsgDiv.innerHTML = marked.parse(aiResponse);
       setupCodeBlocks(botMsgDiv);
 
