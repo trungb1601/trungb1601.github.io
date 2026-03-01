@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gemini Hub</title>
+  <title>AI Chat Hub</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -16,6 +16,9 @@
       --blue-accent: #8ab4f8;
       --user-bubble: #2b2d31;
       --bot-bubble: #5c6fa3; 
+      --status-green: #4caf50;
+      --status-orange: #ff9800;
+      --status-red: #f44336;
     }
 
     body {
@@ -64,7 +67,6 @@
       font-size: 15px;
       border-radius: 18px;
       position: relative;
-      box-sizing: border-box;
     }
 
     .user {
@@ -81,29 +83,19 @@
       margin-left: min(500px, 15%);
     }
 
-    /* THE PADDING FIX: Stripping all browser margins from AI generated text */
     .bot * { margin: 0 !important; }
     .bot p + p, .bot ul, .bot ol, .bot pre { margin-top: 10px !important; }
-    .bot li { margin-left: 20px !important; }
 
-    .bot pre {
-      background: #00000040;
-      border: 1px solid #ffffff20;
-      border-radius: 10px;
-      padding: 12px;
-    }
-    
-    .copy-btn {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: #ffffff15;
-      color: #fff;
-      border: none;
-      padding: 3px 8px;
-      font-size: 10px;
-      border-radius: 4px;
-      cursor: pointer;
+    /* Status Indicator Styling */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 8px;
+      background-color: var(--status-red); /* Default to not connected */
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      transition: background-color 0.3s ease;
     }
 
     footer {
@@ -124,6 +116,14 @@
       align-items: center;
       padding: 4px 18px;
       border: 1px solid #444;
+    }
+
+    .provider-wrapper {
+      display: flex;
+      align-items: center;
+      border-right: 1px solid #444;
+      padding-right: 12px;
+      margin-right: 8px;
     }
 
     select {
@@ -157,7 +157,7 @@
 </head>
 <body>
 
-<header>Gemini Hub</header>
+<header>AI Chat Hub</header>
 
 <div id="chat-container">
   <div id="chat"></div>
@@ -165,56 +165,50 @@
 
 <footer>
   <div class="input-container">
-    <select id="provider">
-      <option value="gemini">Gemini</option>
-      <option value="grok">Grok</option>
-      <option value="openai">GPT-4o</option>
-    </select>
+    <div class="provider-wrapper">
+      <select id="provider">
+        <option value="gemini">Gemini</option>
+        <option value="grok">Grok</option>
+        <option value="openai">GPT-4o</option>
+      </select>
+      <span id="statusIndicator" class="status-dot"></span>
+    </div>
     <input id="input" placeholder="Type a message..." autocomplete="off" />
     <button id="sendBtn">➤</button>
   </div>
 </footer>
 
 <script>
-  marked.setOptions({
-    highlight: function(code) { return hljs.highlightAuto(code).value; },
-    breaks: true // Respects single line breaks
-  });
-
   const chat = document.getElementById("chat");
   const input = document.getElementById("input");
   const providerSelect = document.getElementById("provider");
   const sendBtn = document.getElementById("sendBtn");
+  const statusIndicator = document.getElementById("statusIndicator");
+
+  // Function to update status color
+  function updateStatus(state) {
+    if (state === 'connected') statusIndicator.style.backgroundColor = 'var(--status-green)';
+    else if (state === 'error') statusIndicator.style.backgroundColor = 'var(--status-orange)';
+    else statusIndicator.style.backgroundColor = 'var(--status-red)';
+  }
+
+  // Initial check
+  window.addEventListener('online', () => updateStatus('connected'));
+  window.addEventListener('offline', () => updateStatus('disconnected'));
+  updateStatus(navigator.onLine ? 'connected' : 'disconnected');
+
+  marked.setOptions({
+    highlight: function(code) { return hljs.highlightAuto(code).value; }
+  });
 
   function addMessage(content, sender) {
     const div = document.createElement("div");
     div.className = "msg " + sender;
-    
-    if (sender === "user") {
-      div.textContent = content;
-    } else {
-      div.innerHTML = marked.parse(content);
-      setupCodeBlocks(div);
-    }
-    
+    if (sender === "user") div.textContent = content;
+    else div.innerHTML = marked.parse(content);
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
     return div;
-  }
-
-  function setupCodeBlocks(container) {
-    container.querySelectorAll('pre').forEach(block => {
-      const btn = document.createElement('button');
-      btn.className = 'copy-btn';
-      btn.innerText = 'Copy';
-      btn.onclick = () => {
-        const code = block.querySelector('code')?.innerText || block.innerText;
-        navigator.clipboard.writeText(code.replace('Copy', ''));
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = 'Copy', 2000);
-      };
-      block.appendChild(btn);
-    });
   }
 
   async function send() {
@@ -224,7 +218,6 @@
 
     addMessage(text, "user");
     input.value = "";
-    
     const botMsgDiv = addMessage("Thinking...", "bot");
 
     try {
@@ -234,16 +227,19 @@
         body: JSON.stringify({ provider, message: text })
       });
 
+      if (!response.ok) throw new Error("API Error");
+
       const data = await response.json();
       let aiResponse = provider === "gemini" 
         ? data.candidates[0].content.parts[0].text 
         : data.choices[0].message.content;
 
       botMsgDiv.innerHTML = marked.parse(aiResponse);
-      setupCodeBlocks(botMsgDiv);
+      updateStatus('connected');
 
     } catch (err) {
-      botMsgDiv.innerHTML = `<span style="color:#ffbaba">Error: Check connection.</span>`;
+      botMsgDiv.innerHTML = `<span style="color:#ffbaba">Connection Error.</span>`;
+      updateStatus('error');
     }
   }
 
