@@ -14,7 +14,8 @@
       --bg-sidebar: #1e1f20;
       --txt-main: #e3e3e3;
       --blue-accent: #8ab4f8;
-      --bot-bubble: #222427;
+      --user-bubble: #2b2d31;
+      --bot-bubble: #5c6fa3; /* Your custom color */
     }
 
     body {
@@ -25,14 +26,26 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      align-items: center; /* Centers the layout */
     }
 
     header {
+      width: 100%;
       padding: 16px 24px;
       font-size: 20px;
       font-weight: 500;
       color: var(--blue-accent);
       border-bottom: 1px solid #333;
+      box-sizing: border-box;
+    }
+
+    #chat-container {
+      flex: 1;
+      width: 100%;
+      max-width: 800px; /* Limits overall width for a centered feel */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     #chat {
@@ -45,68 +58,82 @@
     }
 
     .msg {
-      max-width: 85%;
-      padding: 12px 18px;
+      /* Limits bubble width to roughly 75% of the centered container */
+      max-width: 75%; 
+      padding: 14px 20px;
       line-height: 1.6;
       font-size: 15px;
-      border-radius: 18px;
+      border-radius: 20px;
       white-space: pre-wrap;
+      position: relative;
     }
 
     .user {
-      background: #2b2d31;
+      background: var(--user-bubble);
       align-self: flex-end;
       border-bottom-right-radius: 4px;
+      color: #fff;
     }
 
     .bot {
-      background: transparent;
+      background: var(--bot-bubble);
       align-self: flex-start;
-      padding: 0; /* Let markdown handle padding */
-      width: 100%;
+      border-bottom-left-radius: 4px;
+      color: #fff;
     }
 
-    /* Markdown Styling */
-    .bot p { margin: 0 0 16px 0; }
+    /* Markdown Styling inside bubbles */
+    .bot p { margin: 0 0 12px 0; }
+    .bot p:last-child { margin-bottom: 0; }
+    
     .bot pre {
-      background: #000;
-      border: 1px solid #333;
+      background: #00000050; /* Subtle overlay for code */
+      border: 1px solid #ffffff30;
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
       overflow-x: auto;
-      position: relative;
+      margin: 10px 0;
     }
-    .bot code { font-family: 'Consolas', monospace; color: #f8f8f2; }
+    
+    .bot code { font-family: 'Consolas', monospace; }
     
     .copy-btn {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #333;
-      color: #ccc;
+      top: 8px;
+      right: 8px;
+      background: #ffffff30;
+      color: #fff;
       border: none;
-      padding: 4px 8px;
+      padding: 4px 10px;
       font-size: 11px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
+      backdrop-filter: blur(4px);
     }
 
     footer {
+      width: 100%;
       padding: 20px;
       display: flex;
       justify-content: center;
       background: var(--bg-main);
+      box-sizing: border-box;
     }
 
     .input-container {
       width: 100%;
-      max-width: 800px;
+      max-width: 700px; /* Keeps input bar tighter */
       background: var(--bg-sidebar);
       border-radius: 30px;
       display: flex;
       align-items: center;
       padding: 6px 16px;
       border: 1px solid #444;
+      transition: border-color 0.3s;
+    }
+
+    .input-container:focus-within {
+      border-color: var(--blue-accent);
     }
 
     select {
@@ -114,7 +141,7 @@
       color: var(--blue-accent);
       border: none;
       font-weight: bold;
-      margin-right: 10px;
+      padding: 10px;
       cursor: pointer;
       outline: none;
     }
@@ -141,9 +168,11 @@
 </head>
 <body>
 
-<header>Gemini Hub</header>
+<header>AI Chat Hub</header>
 
-<div id="chat"></div>
+<div id="chat-container">
+  <div id="chat"></div>
+</div>
 
 <footer>
   <div class="input-container">
@@ -152,7 +181,7 @@
       <option value="grok">Grok</option>
       <option value="openai">GPT-4o</option>
     </select>
-    <input id="input" placeholder="Enter a prompt here" autocomplete="off" />
+    <input id="input" placeholder="Type a message..." autocomplete="off" />
     <button id="sendBtn">➤</button>
   </div>
 </footer>
@@ -177,26 +206,28 @@
     if (sender === "user") {
       div.textContent = content;
     } else {
-      // Create a container that looks cleaner
       div.innerHTML = marked.parse(content);
-      
-      // Add Copy buttons to all code blocks
-      div.querySelectorAll('pre').forEach(block => {
-        const btn = document.createElement('button');
-        btn.className = 'copy-btn';
-        btn.innerText = 'Copy';
-        btn.onclick = () => {
-          navigator.clipboard.writeText(block.innerText.replace('Copy', ''));
-          btn.innerText = 'Copied!';
-          setTimeout(() => btn.innerText = 'Copy', 2000);
-        };
-        block.appendChild(btn);
-      });
+      setupCodeBlocks(div);
     }
     
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
     return div;
+  }
+
+  function setupCodeBlocks(container) {
+    container.querySelectorAll('pre').forEach(block => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.innerText = 'Copy';
+      btn.onclick = () => {
+        const textToCopy = block.querySelector('code')?.innerText || block.innerText.replace('Copy', '');
+        navigator.clipboard.writeText(textToCopy);
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = 'Copy', 2000);
+      };
+      block.appendChild(btn);
+    });
   }
 
   async function send() {
@@ -207,7 +238,7 @@
     addMessage(text, "user");
     input.value = "";
     
-    const botMsgDiv = addMessage("...", "bot");
+    const botMsgDiv = addMessage("Thinking...", "bot");
 
     try {
       const response = await fetch("https://xai-grok-chathub.trungb1601.workers.dev/", {
@@ -224,22 +255,11 @@
         : data.choices[0].message.content;
 
       botMsgDiv.innerHTML = marked.parse(aiResponse);
-      
-      // Re-trigger copy button logic for new message
-      botMsgDiv.querySelectorAll('pre').forEach(block => {
-          const btn = document.createElement('button');
-          btn.className = 'copy-btn';
-          btn.innerText = 'Copy';
-          btn.onclick = () => {
-            navigator.clipboard.writeText(block.innerText.replace('Copy', ''));
-            btn.innerText = 'Copied!';
-            setTimeout(() => btn.innerText = 'Copy', 2000);
-          };
-          block.appendChild(btn);
-      });
+      setupCodeBlocks(botMsgDiv);
 
     } catch (err) {
-      botMsgDiv.innerHTML = `<span style="color:#ff4a4a">Error: ${err.message}</span>`;
+      botMsgDiv.innerHTML = `<span style="color:#ffbaba">Error: Check your connection or API configuration.</span>`;
+      console.error(err);
     }
   }
 
